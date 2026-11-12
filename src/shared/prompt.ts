@@ -10,6 +10,7 @@
  *   - 问答会话：只读代码 + 已生成的图（{@link buildAskPrompt}），没有任何写工具。
  */
 
+import type { OutputLanguage } from './language.js'
 import { ARTIFACT_MARKER } from './protocol.js'
 import type { ArchifyType, Concept, DiagramMode, GitSnapshot, Persistence } from './types.js'
 
@@ -38,6 +39,8 @@ export interface RunPromptInput {
   readonly stamp: string
   /** archify Skill 的绝对根目录；null 表示环境降级（没有 skill 可用）。 */
   readonly archifySkillPath: string | null
+  /** 产物语言；null / 缺省表示不干预（沿用历史行为，agent 跟随提示词语言）。 */
+  readonly outputLanguage?: OutputLanguage | null
   /** 每张图上一版的分支（null 表示以前没生成过）。 */
   readonly previous: Readonly<Record<string, string | null>>
 }
@@ -51,6 +54,8 @@ export interface AskPromptInput {
   /** 这张图当前的 candidate.json（截断后）；null 表示没有。 */
   readonly candidate: string | null
   readonly question: string
+  /** 回答语言；null / 缺省表示不干预。 */
+  readonly outputLanguage?: OutputLanguage | null
 }
 
 /** 默认两张图的建模口径。 */
@@ -173,6 +178,36 @@ function diagramBlock(diagram: PromptDiagram, previousBranch: string | null): st
  *
  * 结果是**自包含**的：agent 看不到本插件的任何文档，只有这段文本 + SKILL.md。
  */
+/**
+ * 产物语言要求（出图会话）。
+ *
+ * 渲染器只本地化 chrome，节点文字是 agent 写进 candidate.json 的；不在这里写死
+ * 要求，agent 就会跟着提示词本身的语言走（历史上就是中文，见 README「语言」）。
+ */
+function runLanguageBlock(language: OutputLanguage | null): string {
+  if (language === null) return ''
+  return `## 产物语言（硬性）
+
+图是给人读的，面向读者的文字一律用 ${language.name} 写：
+
+- 必须翻译：\`meta.title\` / \`meta.subtitle\` / \`meta.description\`、\`components[].label\` / \`sublabel\` / \`tag\`、\`connections[].label\`、\`cards[].title\` / \`items\`、\`boundaries[].label\`，以及所有清单条目的说明文字。
+- 保持原文：文件路径、目录名、类型/函数/类名、命令、环境变量、产品与协议名（如 FastAPI、Redis、mTLS）。
+- \`candidate.json\` 的 \`meta.locale\` 必须写 \`"${language.locale}"\`：图例、工具栏、无障碍文案才会和正文同一语言。
+- \`concepts.json\` 的 \`name\` / \`summary\` 也用 ${language.name} —— 页面与问答会话直接显示它们。
+
+`
+}
+
+/** 回答语言要求（问答会话）：不改提示词语言，只约束回答文字。 */
+function askLanguageBlock(language: OutputLanguage | null): string {
+  if (language === null) return ''
+  return `## 回答语言（硬性）
+
+用 ${language.name} 回答；文件路径、符号名、命令与产品名保持原文。
+
+`
+}
+
 export function buildRunPrompt(input: RunPromptInput): string {
   const { projectName, repoPath, workspaceDir, git, diagrams, concepts, stamp, archifySkillPath } =
     input
@@ -225,7 +260,7 @@ ${conceptBlock(concepts)}
 ${sections}
 
 ${archifyBlock(archifySkillPath, diagrams, stamp)}
-
+${runLanguageBlock(input.outputLanguage ?? null)}
 ## 硬约束
 
 0. **先建 todo**：开工第一步就调用 \`todo_write\`，把这次工作拆成 4–7 步（例：读代码 → 提概念 → 每张图 candidate → finalize → 回报），之后每完成一步就更新一次；最后一步固定是「回报产物标记」。页面靠这份 todo 显示进度。
@@ -291,6 +326,7 @@ ${candidate === null ? '（没有读到 candidate.json，只能依据代码回�
 
 ${question}
 
+${askLanguageBlock(input.outputLanguage ?? null)}
 ## 回答要求
 
 0. **先建 todo**：开工第一步调用 \`todo_write\`，把这次回答拆成 3–5 步（例：看图的产物 → 读相关代码 → 整理结论），每完成一步更新一次。

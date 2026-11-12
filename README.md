@@ -101,6 +101,28 @@ pnpm add link:/absolute/path/to/dsh-archify-projects   # 或在 package.json 里
 6. 右上角**齿轮**是设置：只有一个「分析模型」下拉，选项就是你在 DSH 里已经配好、
    当前真能路由的模型；不选＝跟随宿主默认。改完对下一次运行生效。
 
+## 语言
+
+图的标题、节点、连线、卡片文字是 agent 写进 `candidate.json` 的，渲染器只本地化
+图例/工具栏那一圈 chrome，所以「出图用什么语言」只能靠提示词要求。配置项
+`outputLanguage` 就是干这个的：
+
+```yaml
+# ~/.dsh/profiles/web/cordis.patch.yml（按 id 覆盖即可，不用改插件自己的 patch）
+- id: dsh-archify-projects
+  name: dsh-archify-projects
+  config:
+    outputLanguage: en
+```
+
+- 取值：`en` / `zh-CN`（以及 `English`、`中文`、`zh_TW` 这类别名）；写别的语言名也认
+  （正文按名字要求，图例落英文）。
+- **不写这一项**＝历史行为：agent 跟随提示词本身的语言，即中文。
+- 生效范围：之后的**每一次出图**（新建、更新、重画）和**问答会话**。已经生成好的图不会
+  自己变 —— 要么「重画」，要么直接改 `candidate.json` 后 `archify finalize` 重渲染。
+- 渲染器只认识 `en` / `zh-CN` 两套界面语言，所以 `meta.locale` 只会是这两个值之一；
+  正文语言不受这个限制。
+
 ---
 
 ## 设计要点

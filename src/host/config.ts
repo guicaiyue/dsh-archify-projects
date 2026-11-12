@@ -8,6 +8,7 @@
 import os from 'node:os'
 import path from 'node:path'
 import type { Pricing } from '../shared/format.js'
+import { resolveOutputLanguage, type OutputLanguage } from '../shared/language.js'
 
 /** 宿主 profile 传入的原始配置（YAML 反序列化结果，什么都可能是）。 */
 export interface RawPluginConfig {
@@ -15,6 +16,7 @@ export interface RawPluginConfig {
   readonly presetId?: unknown
   readonly askPresetId?: unknown
   readonly archifySkillDir?: unknown
+  readonly outputLanguage?: unknown
   readonly runTimeoutMs?: unknown
   readonly askTimeoutMs?: unknown
   readonly keepRuns?: unknown
@@ -31,6 +33,8 @@ export interface ResolvedConfig {
   readonly askPresetId: string
   /** 显式指定的 archify skill 目录；null 表示自动探测。 */
   readonly archifySkillDir: string | null
+  /** 产物语言；null 表示不干预，agent 跟随提示词本身的语言（历史行为）。 */
+  readonly outputLanguage: OutputLanguage | null
   /** 单次 agent 运行的超时（毫秒）。 */
   readonly runTimeoutMs: number
   /** 单次提问会话的超时（毫秒）。 */
@@ -69,11 +73,22 @@ export function resolveConfig(
       ? path.resolve(skillRaw.trim())
       : null
 
+  const languageRaw = raw?.outputLanguage
+  let outputLanguage: OutputLanguage | null = null
+  if (languageRaw !== undefined && languageRaw !== null) {
+    if (typeof languageRaw !== 'string' || languageRaw.trim().length === 0) {
+      warnings.push('配置项 outputLanguage 不是非空字符串，已忽略')
+    } else {
+      outputLanguage = resolveOutputLanguage(languageRaw)
+    }
+  }
+
   return {
     dataDir: path.resolve(dataDir),
     presetId,
     askPresetId,
     archifySkillDir,
+    outputLanguage,
     runTimeoutMs: readPositiveInt(raw?.runTimeoutMs, 20 * 60 * 1000, 'runTimeoutMs', warnings),
     askTimeoutMs: readPositiveInt(raw?.askTimeoutMs, 6 * 60 * 1000, 'askTimeoutMs', warnings),
     keepRuns: readPositiveInt(raw?.keepRuns, 20, 'keepRuns', warnings),

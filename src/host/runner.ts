@@ -148,6 +148,7 @@ export class Runner {
       concepts: project.concepts,
       stamp: stampOf(new Date()),
       archifySkillPath: skillDir,
+      outputLanguage: config.outputLanguage,
       previous: previousBranches(diagrams),
     })
 
@@ -213,6 +214,7 @@ export class Runner {
       concepts: project.concepts,
       candidate,
       question,
+      outputLanguage: config.outputLanguage,
     })
 
     const qaId = `qa_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`

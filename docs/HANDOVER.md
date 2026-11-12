@@ -263,25 +263,25 @@ git push                 # 已 set-upstream，直接推
 
 ## 10. 文件索引（改东西先看这里）
 
-| 文件                        | 行数   | 职责 / 什么时候动它                                                                                       |
-| --------------------------- | ------ | --------------------------------------------------------------------------------------------------------- |
-| `src/host/index.ts`         | 114    | 插件入口：注册路由（`ctx.inject(['webServer'], …)`）、启动对账、装卡片。**改挂载方式看这里**              |
-| `src/host/routes.ts`        | 457    | 路由分发与每个 handler。加接口从这里加，路径表在 `shared/protocol.ts`                                     |
-| `src/host/runner.ts`        | 633    | agent 编排、产物回收（`discoverArtifacts`）、超时、开库对账（`reconcileArtifacts`）。**最复杂的一个文件** |
-| `src/host/store.ts`         | 232    | 台账读写、串行化、损坏兜底                                                                                |
-| `src/host/git.ts`           | 210    | Git 探测、切分支/快进。非 Git 目录走空快照                                                                |
-| `src/host/policy.ts`        | 135    | 工具白名单 + 守卫。放宽/收紧 agent 能力只改这里                                                           |
-| `src/host/config.ts`        | 107    | 配置项与默认值（`dataDir` / `presetId` / `archifySkillDir` / `runTimeoutMs` / `keepRuns`）                |
-| `src/host/context.ts`       | 211    | 宿主服务的**防御式**包装。`ctx.get()` 与 `ctx.<svc>` 都可能抛，必须 try/catch                             |
-| `src/host/http.ts`          | 195    | 响应封装 + 浏览器信任栅栏                                                                                 |
-| `src/host/workspace.ts`     | 85     | 工作区目录与 agent 工作目录                                                                               |
-| `src/host/archify-skill.ts` | 123    | 定位 archify skill（vendored 优先，其次配置项）                                                           |
-| `src/shared/*.ts`           | 619    | 纯逻辑：类型与不变量、prompt、协议/路由常量、格式化。**无副作用，随便测**                                 |
-| `src/client/*`              | 1570   | 页面、组件、样式、文案、fetch                                                                             |
-| `cordis.patch.yml`          | 57     | 挂插件 + 声明受限 preset。**改 preset 要重启**                                                            |
-| `docs/DESIGN.md`            | 498    | 设计取舍、数据模型、里程碑与验证记录                                                                      |
-| `docs/CONTAINER.md`         | —      | dsh-dev 容器里的绑定关系、日常循环、模型凭据与冒烟步骤                                                    |
-| `skills/archify/`           | 7.3 MB | vendored 的 archify skill（第三方，勿手改）                                                               |
+| 文件                        | 行数   | 职责 / 什么时候动它                                                                                           |
+| --------------------------- | ------ | ------------------------------------------------------------------------------------------------------------- |
+| `src/host/index.ts`         | 114    | 插件入口：注册路由（`ctx.inject(['webServer'], …)`）、启动对账、装卡片。**改挂载方式看这里**                  |
+| `src/host/routes.ts`        | 457    | 路由分发与每个 handler。加接口从这里加，路径表在 `shared/protocol.ts`                                         |
+| `src/host/runner.ts`        | 633    | agent 编排、产物回收（`discoverArtifacts`）、超时、开库对账（`reconcileArtifacts`）。**最复杂的一个文件**     |
+| `src/host/store.ts`         | 232    | 台账读写、串行化、损坏兜底                                                                                    |
+| `src/host/git.ts`           | 210    | Git 探测、切分支/快进。非 Git 目录走空快照                                                                    |
+| `src/host/policy.ts`        | 135    | 工具白名单 + 守卫。放宽/收紧 agent 能力只改这里                                                               |
+| `src/host/config.ts`        | 158    | 配置项与默认值（`dataDir` / `presetId` / `archifySkillDir` / `outputLanguage` / `runTimeoutMs` / `keepRuns`） |
+| `src/host/context.ts`       | 211    | 宿主服务的**防御式**包装。`ctx.get()` 与 `ctx.<svc>` 都可能抛，必须 try/catch                                 |
+| `src/host/http.ts`          | 195    | 响应封装 + 浏览器信任栅栏                                                                                     |
+| `src/host/workspace.ts`     | 85     | 工作区目录与 agent 工作目录                                                                                   |
+| `src/host/archify-skill.ts` | 123    | 定位 archify skill（vendored 优先，其次配置项）                                                               |
+| `src/shared/*.ts`           | 1223   | 纯逻辑：类型与不变量、prompt、协议/路由常量、格式化。**无副作用，随便测**                                     |
+| `src/client/*`              | 1570   | 页面、组件、样式、文案、fetch                                                                                 |
+| `cordis.patch.yml`          | 57     | 挂插件 + 声明受限 preset。**改 preset 要重启**                                                                |
+| `docs/DESIGN.md`            | 498    | 设计取舍、数据模型、里程碑与验证记录                                                                          |
+| `docs/CONTAINER.md`         | —      | dsh-dev 容器里的绑定关系、日常循环、模型凭据与冒烟步骤                                                        |
+| `skills/archify/`           | 7.3 MB | vendored 的 archify skill（第三方，勿手改）                                                                   |
 
 ---
 
@@ -349,9 +349,13 @@ DiagramState {
 
 - `buildRunPrompt`：环境事实（分支 + 工作区计数）→ 概念表契约（写 `concepts.json`）→
   每张图的建模口径/自定义 prompt → archify 调用方式（目录名以图 id 开头）→
+  **产物语言**（`outputLanguage` 非空时；见 `src/shared/language.ts`）→
   `ARCHIFY_ARTIFACT <id> <path>` 回报标记。
 - `buildAskPrompt`：只给「这张图的 prompt + candidate.json 截断 + 绑定的概念及证据文件 +
-  代码库根目录」，要求先结论后依据、查不到就说没有、最后给「建议补进图里的节点/关系」。
+  代码库根目录」，要求先结论后依据、查不到就说没有、最后给「建议补进图里的节点/关系」；
+  `outputLanguage` 非空时再加一段「回答语言」。
+- 语言只能靠提示词约束：渲染器的 `meta.locale` 只本地化图例/工具栏，节点文字在
+  `candidate.json` 里由 agent 写。
 - 问答会话的工具面由 `policy.readonlyToolNames()` 收口为 `read/glob/grep/skill`。
 
 ### 12.5 页面
